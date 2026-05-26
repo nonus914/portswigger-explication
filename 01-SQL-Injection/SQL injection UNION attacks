@@ -1,1 +1,102 @@
+## Introduction
+
+Pour réussir une attaque par injection SQL de type **UNION**, la requête injectée doit impérativement respecter deux exigences fondamentales :
+1. **Le nombre de colonnes :** Les requêtes individuelles doivent retourner exactement le même nombre de colonnes.
+2. **La compatibilité des types :** Les types de données dans chaque colonne correspondante doivent être compatibles entre la requête originale et la requête injectée.
+
+L'objectif initial d'une exploitation consiste donc à découvrir :
+* Combien de colonnes sont retournées par la requête initiale.
+* Quelles colonnes ont un type de données approprié (comme du texte) pour y injecter nos propres résultats.
+
+---
+
+# LAB 1 PortSwigger Lab Write-up : SQL injection UNION attack, determining the number of columns
+## Objectif du Lab
+
+Déterminer le nombre de colonnes retournées par la requête originale afin de valider la structure de notre future injection.
+
+* **URL cible :** `https://0ab800350375a81982bf38fb00c800a6.web-security-academy.net/filter?category=Clothing%2c+shoes+and+accessories`
+
+---
+
+## Méthodologie d'exploitation
+
+L'application utilise un paramètre `category` pour filtrer les objets affichés à l'écran. C'est ce paramètre que nous allons cibler.
+
+Pour trouver le nombre exact de colonnes, nous injectons l'opérateur `UNION SELECT` suivi d'une liste de valeurs `NULL`. Nous augmentons progressivement le nombre de `NULL` jusqu'à ce que l'application ne renvoie plus d'erreur (généralement une erreur HTTP 500 ou un crash de la page). 
+
+> **Pourquoi utiliser `NULL` ?** > La valeur `NULL` est convertible dans presque tous les types de données (String, Integer, etc.), ce qui évite de déclencher une erreur liée au type de colonne lors de cette phase de découverte.
+
+### Injection testée
+
+En testant successivement 1, 2 puis 3 valeurs `NULL`, la page se charge correctement sans erreur lorsque nous atteignons le bon nombre.
+
+**URL finale construite :**
+```text
+[https://0ab800350375a81982bf38fb00c800a6.web-security-academy.net/filter?category=Clothing%2c+shoes+and+accessories](https://0ab800350375a81982bf38fb00c800a6.web-security-academy.net/filter?category=Clothing%2c+shoes+and+accessories)'+UNION+SELECT+NULL,NULL,NULL--
+
+
+
+
+
+
+# LAB 2: SQL injection UNION attack, finding a column containing text
+
+## Introduction 
+
+Après avoir déterminé le nombre de colonnes retournées par la requête originale (voir Lab 1), l'étape suivante consiste à identifier la ou les colonnes capables de recevoir et d'afficher des données au format texte (**type `VARCHAR`, `CHAR`, `TEXT`, etc.**). 
+
+Cette étape est cruciale, car pour exfiltrer des données sensibles (comme des identifiants ou des mots de passe), la colonne dans laquelle nous injectons nos données doit être compatible avec le type de données que nous souhaitons récupérer.
+
+---
+
+## Objectif du Lab
+
+Identifier quelle colonne parmi celles détectées accepte du texte, puis y injecter une chaîne de caractères spécifique fournie par le laboratoire (`wOblah`) afin de valider le challenge.
+
+* **URL cible :** `https://0a5400d9039064088256528300080079.web-security-academy.net/filter?category=Gifts`
+
+---
+
+## Méthodologie d'exploitation
+
+En nous basant sur la structure découverte précédemment, nous savons que la requête utilise 3 colonnes. Nous allons tester chaque colonne une par une en remplaçant la valeur `NULL` par une chaîne de caractères de test (par exemple 'a'). 
+
+Si l'application renvoie une erreur (HTTP 500), cela signifie que la colonne testée n'accepte pas le format texte (il s'agit probablement d'un entier ou d'un autre type incompatible). Si la page se charge normalement, la colonne est valide.
+
+> **Rappel important :** Plusieurs colonnes au sein d'une même requête peuvent être de type VARCHAR simultanément.
+
+Nous testons l'injection d'un caractère textuel sur la deuxième colonne :
+[https://0a5400d9039064088256528300080079.web-security-academy.net/filter?category=Gifts](https://0a5400d9039064088256528300080079.web-security-academy.net/filter?category=Gifts)' UNION SELECT NULL,'a',NULL--
+Et cela marche bien, nous avons trouver ou l'on peut injecter du varchar
+
+
+
+
+
+
+#   LAB 3  : SQL injection UNION attack, retrieving data from other tables
+
+## Objectif du Lab
+
+Extraire les identifiants de connexion (noms d'utilisateurs et mots de passe) stockés dans une table tierce nommée 'users', contenant les colonnes 'username' et 'password'.
+
+* **URL cible :** `https://0abf00ad0465c70e82b1061a002d00bd.web-security-academy.net/filter?category=Pets`
+
+---
+
+## Méthodologie d'exploitatio
+
+### reconnaissance (Structure et Types)
+
+En effectuant les tests de structure (détermination du nombre de colonnes) et de compatibilité des types, nous découvrons que la requête initiale retourne **2 colonnes** et que **toutes les deux** acceptent le format texte (`VARCHAR`).
+
+Nous validons cette structure avec le payload de test suivant :
+[https://0abf00ad0465c70e82b1061a002d00bd.web-security-academy.net/filter?category=Pets](https://0abf00ad0465c70e82b1061a002d00bd.web-security-academy.net/filter?category=Pets)' UNION SELECT 'a','a'--
+il ne manque plus qu'a interroger la BDD par rapport aux informations que l'on a de users:
+https://0abf00ad0465c70e82b1061a002d00bd.web-security-academy.net/filter?category=Pets%27+UNION+SELECT+username,password+FROM+users--
+L'on recupere bien les mdp et username des personnes etant inscrite sur la BDD  
+
+
+
 
