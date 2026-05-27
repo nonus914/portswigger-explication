@@ -100,3 +100,41 @@ L'on recupere bien les mdp et username des personnes etant inscrite sur la BDD
 
 
 
+# LAB 4 : SQL injection UNION attack, retrieving multiple values in a single column
+
+##  Introduction 
+
+Dans les laboratoires précédents, nous avions la chance de disposer de plusieurs colonnes compatibles avec le type texte (`VARCHAR`), ce qui nous permettait d'extraire les données (comme `username` et `password`) de manière distincte.
+
+Cependant, il arrive fréquemment lors d'un test d'intrusion que la requête originale ne retourne qu'**une seule colonne** acceptant le format texte. Pour contourner cette limitation et exfiltrer plusieurs informations simultanément, il est nécessaire de **concaténer** les valeurs cibles au sein d'une unique colonne.
+
+Selon le système de gestion de base de données (SGBD) utilisé, la syntaxe de concaténation varie. Dans ce laboratoire (qui utilise une base de données de type PostgreSQL), nous utilisons l'opérateur de concaténation `||`. Nous y ajoutons également un séparateur (comme le caractère `~`) pour pouvoir distinguer facilement le nom d'utilisateur du mot de passe dans le résultat affiché.
+
+---
+
+## Objectif du Lab
+
+Extraire les couples d'identifiants (`username` et `password`) de la table `users` en les regroupant dans une seule et unique colonne textuelle afin de contourner la restriction de structure.
+
+* **URL cible :** `https://0a2a00ba04f9e54982f2d33c00b000db.web-security-academy.net/filter?category=Gifts`
+
+---
+
+##  Méthodologie d'exploitation
+
+### Phase de reconnaissance (LAB 1 & LAB 2)
+
+En appliquant les méthodologies de découverte des étapes précédentes, nous déterminons que :
+1. La requête retourne **2 colonnes**.
+2. **Seule la deuxième colonne** est capable de recevoir et d'afficher du texte (`VARCHAR`). La première colonne renvoie une erreur si l'on tente d'y injecter une chaîne de caractères.
+
+Notre structure de base pour l'injection est donc : `UNION SELECT NULL, [Notre_Payload]--`
+
+### Phase d'exfiltration par concaténation (Payload final)
+
+Puisque nous ne pouvons exploiter que la deuxième colonne pour afficher nos données, nous y injectons la fonction de concaténation PostgreSQL pour lier le nom d'utilisateur et le mot de passe, séparés par un tilde (`~`) :
+username || '~' || password
+
+URL COMPLET apres process LAB 1 & 2 : https://0a2a00ba04f9e54982f2d33c00b000db.web-security-academy.net/filter?category=Gifts'+UNION+SELECT+NULL,username+||'~'||+password+FROM+users--
+
+
